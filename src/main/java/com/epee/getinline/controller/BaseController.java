@@ -1,16 +1,18 @@
 package com.epee.getinline.controller;
 
-import org.springframework.boot.web.servlet.error.ErrorController;
+import com.epee.getinline.exception.GeneralException;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 
 @Controller
 public class BaseController {
 
   @GetMapping("/")
-  public String root() {
-    return "index";
+  public String root() throws Exception {
+    throw new Exception("에러 테스트 RuntimeException !!!");
+    //throw new GeneralException("에러 테스트 GeneralException !!!");
+
+    //return "index";
   }
 
 }
