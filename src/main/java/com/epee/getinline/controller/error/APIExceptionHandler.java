@@ -4,14 +4,17 @@ package com.epee.getinline.controller.error;
 import com.epee.getinline.constant.ErrorCode;
 import com.epee.getinline.dto.APIErrorResponse;
 import com.epee.getinline.exception.GeneralException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 @RestControllerAdvice(annotations = RestController.class)
-public class APIExceptionHandler {
+public class APIExceptionHandler extends ResponseEntityExceptionHandler {
 
   /**
    * throw new GeneralException("GeneralException !!!")
@@ -45,6 +48,28 @@ public class APIExceptionHandler {
   }
 
 
+  /**
+   * This base class provides an @ExceptionHandler method for handling internal Spring MVC exception
+   * Object body = null
+   *
+   * protected ResponseEntity<Object> handleExceptionInternal( ...
+   *
+   * https://github.com/djkeh/get-in-line/blob/feature/%232-api/src/main/java/com/uno/getinline/controller/error/APIExceptionHandler.java
+   */
+  @Override
+  protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body,
+      HttpHeaders headers, HttpStatus status, WebRequest request) {
 
+    ErrorCode errorCode = status.is4xxClientError() ?
+        ErrorCode.SPRING_BAD_REQUEST :
+        ErrorCode.SPRING_INTERNAL_ERROR;
 
+    return super.handleExceptionInternal(
+        ex,
+        APIErrorResponse.of(false, errorCode.getCode(), errorCode.getMessage(ex)),
+        headers,
+        status,
+        request
+    );
+  }
 }

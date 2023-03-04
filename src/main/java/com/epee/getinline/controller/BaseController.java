@@ -9,10 +9,10 @@ public class BaseController {
 
   @GetMapping("/")
   public String root() throws Exception {
-    throw new Exception("에러 테스트 RuntimeException !!!");
+    //throw new Exception("에러 테스트 RuntimeException !!!");
     //throw new GeneralException("에러 테스트 GeneralException !!!");
 
-    //return "index";
+    return "index";
   }
 
 }

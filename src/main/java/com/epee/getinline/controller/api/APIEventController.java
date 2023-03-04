@@ -21,8 +21,8 @@ public class APIEventController {
   @GetMapping("/events")
   public List<String> getEvents() {
     //throw new GeneralException("GeneralException !!!");   // GeneralException > general 호출 됨
-    throw new RuntimeException("RuntimeException !!!"); // BaseErrorController 호출 됨 (지정하지 않은 에러) 또는
-    //return List.of("event1", "event2");
+    //throw new RuntimeException("RuntimeException !!!"); // BaseErrorController 호출 됨 (지정하지 않은 에러) 또는
+    return List.of("event1", "event2");
   }
 
   @PostMapping("/events")

@@ -1,5 +1,8 @@
 package com.epee.getinline.controller.api;
 
+import com.epee.getinline.constant.PlaceType;
+import com.epee.getinline.dto.APIDataResponse;
+import com.epee.getinline.dto.PlaceDto;
 import java.util.List;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,9 +17,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class APIPlaceController {
 
   @GetMapping("/places")
-  public List<String> getPlaces() {
-    return List.of("place1", "place2");
+  public APIDataResponse<List<PlaceDto>> getPlaces() {
+    return APIDataResponse.of(
+                              List.of(
+                                        PlaceDto.of(
+                                                  1L,
+                                                  PlaceType.COMMON,
+                                                  "랄라배드민턴장",
+                                                  "서울시 강남구 강남대로 1234",
+                                                  "010-1234-5678",
+                                                  30,
+                                                  "신장개업"
+                                        )
+                              )
+    );
   }
+
 
   @PostMapping("/places")
   public Boolean createPlace() {
@@ -24,9 +40,26 @@ public class APIPlaceController {
   }
 
   @GetMapping("/places/{placeId}")
-  public String getPlace(@PathVariable Long placeId) {
-    return "place" + placeId;
+  public APIDataResponse<PlaceDto> getPlace(@PathVariable Long placeId) {
+    if (placeId.equals(2L)) {
+      return APIDataResponse.empty();
+    }
+
+    return APIDataResponse.of(
+        PlaceDto.of(
+            1L,
+            PlaceType.COMMON,
+            "랄라배드민턴장",
+            "서울시 강남구 강남대로 1234",
+            "010-1234-5678",
+            30,
+            "신장개업"
+        )
+    );
   }
+
+
+
 
   @PutMapping("/places/{placeId}")
   public Boolean modifyPlace(@PathVariable Long placeId) {
