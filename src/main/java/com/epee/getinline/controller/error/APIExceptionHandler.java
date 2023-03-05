@@ -4,6 +4,7 @@ package com.epee.getinline.controller.error;
 import com.epee.getinline.constant.ErrorCode;
 import com.epee.getinline.dto.APIErrorResponse;
 import com.epee.getinline.exception.GeneralException;
+import javax.validation.ConstraintViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,26 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 @RestControllerAdvice(annotations = RestController.class)
 public class APIExceptionHandler extends ResponseEntityExceptionHandler {
+  @ExceptionHandler
+  public ResponseEntity<Object> validation(ConstraintViolationException e, WebRequest request) {
+    return callSuperInternalExceptionHandler(
+        e,
+        ErrorCode.VALIDATION_ERROR,
+        HttpHeaders.EMPTY,
+        HttpStatus.BAD_REQUEST,
+        request);
+  }
+
+  private ResponseEntity<Object> callSuperInternalExceptionHandler(Exception ex, ErrorCode errorCode, HttpHeaders headers, HttpStatus status, WebRequest request) {
+    return super.handleExceptionInternal(
+        ex,
+        APIErrorResponse.of(false, errorCode.getCode(), errorCode.getMessage(ex)),
+        headers,
+        status,
+        request
+    );
+  }
+
 
   /**
    * throw new GeneralException("GeneralException !!!")
@@ -50,10 +71,8 @@ public class APIExceptionHandler extends ResponseEntityExceptionHandler {
 
   /**
    * This base class provides an @ExceptionHandler method for handling internal Spring MVC exception
-   * Object body = null
-   *
+   * Object body = null 이기 때문에 오버라이드 필수...
    * protected ResponseEntity<Object> handleExceptionInternal( ...
-   *
    * https://github.com/djkeh/get-in-line/blob/feature/%232-api/src/main/java/com/uno/getinline/controller/error/APIExceptionHandler.java
    */
   @Override
@@ -61,7 +80,7 @@ public class APIExceptionHandler extends ResponseEntityExceptionHandler {
       HttpHeaders headers, HttpStatus status, WebRequest request) {
 
     ErrorCode errorCode = status.is4xxClientError() ?
-        ErrorCode.SPRING_BAD_REQUEST :
+        ErrorCode.SPRING_BAD_REQUEST :  // @Vaild 에러 > 스프링 예외!
         ErrorCode.SPRING_INTERNAL_ERROR;
 
     return super.handleExceptionInternal(
@@ -73,3 +92,5 @@ public class APIExceptionHandler extends ResponseEntityExceptionHandler {
     );
   }
 }
+
+

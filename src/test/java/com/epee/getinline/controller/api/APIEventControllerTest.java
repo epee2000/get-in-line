@@ -1,42 +1,83 @@
 package com.epee.getinline.controller.api;
 
+import com.epee.getinline.dto.EventDTO;
+import com.epee.getinline.service.EventService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.epee.getinline.constant.ErrorCode;
 import com.epee.getinline.constant.EventStatus;
 import com.epee.getinline.dto.EventResponse;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 @WebMvcTest(APIEventController.class)
 class APIEventControllerTest {
-
   private final MockMvc mvc;
   private final ObjectMapper mapper;
+
+  // No qualifying bean of type 'com.epee.getinline.service.EventService' available:
+  // expected at least 1 bean which qualifies as autowire candidate. Dependency annotations: {}
+  // --> 컨트롤러에 EventService 의존성이 추가됨
+  // --> 테스트에도 EventService 의존성 주입 해줘야 한다.
+  // --> 실제 EventService 주입하지 말고 아래와 같이 가상 EventService 를 만들자!
+  // --> Controller 까지만 테스트 한다.
+  @MockBean // 목킹을 할때는 필드 주입을 해애 한다. 아래 생성자에 넣을 수 없다... 지원 안함!
+  private EventService eventService;
 
   public APIEventControllerTest(
       @Autowired MockMvc mvc,
       @Autowired ObjectMapper mapper
+      //@MockBean private EventService eventService;
   ) {
     this.mvc = mvc;
     this.mapper = mapper;
   }
 
-  @DisplayName("[API][GET] 이벤트 리스트 조회")
+  private EventDTO createEventDTO() {
+    return EventDTO.of( // new EventDTO
+        1L,
+        "오후 운동",
+        EventStatus.OPENED,
+        LocalDateTime.of(2021, 1, 1, 13, 0, 0),
+        LocalDateTime.of(2021, 1, 1, 16, 0, 0),
+        0,
+        24,
+        "마스크 꼭 착용하세요",
+        LocalDateTime.now(),
+        LocalDateTime.now()
+    );
+  }
+
+  @DisplayName("[API][GET] 이벤트 리스트 조회 + 검색 파라미터")
   @Test
-  void givenNothing_whenRequestingEvents_thenReturnsListOfEventsInStandardResponse() throws Exception {
+  void givenParameters_whenRequestingEvents_thenReturnsListOfEventsInStandardResponse() throws Exception {
     // Given
+    given(eventService.getEvents(any(), any(), any(), any(), any())).willReturn(List.of(createEventDTO()));
 
     // When & Then
-    mvc.perform(get("/api/events"))
+    mvc.perform(get("/api/events")
+            .queryParam("placeId", "1") //  value 는 무조건 스트링만 가능...
+            .queryParam("eventName", "운동")
+            .queryParam("eventStatus", EventStatus.OPENED.name())
+            .queryParam("eventStartDatetime", "2021-01-01T00:00:00")
+            .queryParam("eventEndDatetime", "2021-01-02T00:00:00")
+        )
         .andExpect(status().isOk())
         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.data").isArray())
@@ -55,7 +96,64 @@ class APIEventControllerTest {
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.errorCode").value(ErrorCode.OK.getCode()))
         .andExpect(jsonPath("$.message").value(ErrorCode.OK.getMessage()));
+
+    verify(eventService).getEvents(any(), any(), any(), any(), any());
   }
+
+  @DisplayName("[API][GET] 이벤트 리스트 조회 - 잘못된 검색 파라미터")
+  @Test
+  void givenWrongParameters_whenRequestingEvents_thenReturnsFailedStandardResponse() throws Exception {
+    // Given
+
+
+    // When & Then
+    mvc.perform(get("/api/events")
+            .queryParam("placeId", "0")
+            .queryParam("eventName", "오")
+            .queryParam("eventStatus", EventStatus.OPENED.name())
+            .queryParam("eventStartDatetime", "2021-01-01T00:00:00")
+            .queryParam("eventEndDatetime", "2021-01-02T00:00:00")
+        )
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.errorCode").value(ErrorCode.VALIDATION_ERROR.getCode()))
+        .andExpect(jsonPath("$.message").value(containsString(ErrorCode.VALIDATION_ERROR.getMessage())));
+
+    then(eventService).shouldHaveNoInteractions();
+  }
+
+
+  @DisplayName("[API][POST] 이벤트 생성 - 잘못된 정보 입력")
+  @Test
+  void givenWrongEvent_whenCreatingAnEvent_thenReturnsFailedStandardResponse() throws Exception {
+    // Given
+    EventResponse eventResponse = EventResponse.of(
+        -1L,
+        "  ",
+        null,
+        null,
+        null,
+        -1,
+        0,
+        "마스크 꼭 착용하세요"
+    );
+
+    // When & Then
+    mvc.perform(
+            post("/api/events")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(eventResponse))
+        )
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.errorCode").value(ErrorCode.SPRING_BAD_REQUEST.getCode()))
+        .andExpect(jsonPath("$.message").value(containsString(ErrorCode.SPRING_BAD_REQUEST.getMessage())));
+    then(eventService).shouldHaveNoInteractions();
+  }
+
 
   @DisplayName("[API][POST] 이벤트 생성")
   @Test
@@ -84,6 +182,12 @@ class APIEventControllerTest {
         .andExpect(jsonPath("$.errorCode").value(ErrorCode.OK.getCode()))
         .andExpect(jsonPath("$.message").value(ErrorCode.OK.getMessage()));
   }
+
+
+
+
+
+
 
   @DisplayName("[API][GET] 단일 이벤트 조회 - 이벤트 있는 경우, 이벤트 데이터를 담은 표준 API 출력")
   @Test
